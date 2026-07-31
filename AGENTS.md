@@ -1,0 +1,48 @@
+# AGENTS.md
+
+## Repo state (important)
+Early-stage scaffold with **no git commits** and **no README/CI**. The **auth foundation works end-to-end** (server boots, client boots, login → role-guarded shell), but every feature module is still a placeholder.
+
+Real so far:
+- `packages/server/src/main.ts` — NestJS bootstrap (`/api` global prefix, CORS, `PORT ?? 3000`, loads `.env`)
+- `packages/server/src/app.module.ts` — wires global `JwtAuthGuard` + `RolesGuard` via `APP_GUARD`; imports `DatabaseModule`, `AuthModule`, `PatientsModule`, `QueueModule`, `VitalsModule`
+- `packages/server/src/common/decorators/{roles,public}.decorator.ts`, `common/guards/{jwt-auth,roles}.guard.ts` — `@Roles(...)` / `@Public()`; `JwtAuthGuard` skips `@Public()` routes. Mark new public endpoints (like login) with `@Public()`
+- `packages/server/src/database/schema.ts` — full Drizzle schema (8 tables); `drizzle.config.ts` is real (schema push, not migrations)
+- `packages/server/src/database/seeders/seed.ts` — user seeding (incl. `labtech@clinic.com` LAB_TECH)
+- `packages/server/src/modules/auth/*` — JWT login
+- `packages/server/src/modules/{patients,queue}/*` — patient create/search (`POST /api/patients`, `GET /api/patients/search?q=`) RECEPTIONIST-only; visit check-in with daily auto-incrementing token (`POST /api/queue/register`), today's queue (`GET /api/queue`, now also NURSE-accessible) with `hasVitals` flag. `registerVisit` validates UUID format (400) and rejects a second active visit the same day (400). Token allocation is race-safe: a per-day `pg_advisory_xact_lock` transaction serializes same-day inserts, backed by a `(date(created_at), token_number)` unique index (`queue_daily_token_unique`) + retry on 23505.
+- `packages/server/src/modules/vitals/*` — NURSE-only triage: `POST /api/vitals` upserts one vitals row per visit (validates ranges, computes BMI from weight+height) and marks the visit `TRIAGED`; `GET /api/vitals/:queueId` fetches it (404 if none). Terminal visits (BILLED/COMPLETED/CANCELLED) reject new vitals.
+- `packages/server/src/modules/consultations/*` — DOCTOR-only SOAP notes: `POST /api/consultations` upserts one row per visit (requires non-empty subjective/objective/assessment/plan, optional ICD-10 code+description) and marks the visit `IN_CONSULTATION`; `GET /api/consultations/:queueId` fetches it (404 if none). Terminal visits reject new notes. `GET /api/queue` and `GET /api/vitals/:queueId` are also DOCTOR-readable; queue list carries `hasConsultation` (left-join on consultations).
+- `packages/client` — full auth slice: `index.html`, `vite.config.ts`, `main.tsx`, `App.tsx`, `routes/index.tsx` (role-guarded route table), `context/auth-context.tsx`, `lib/api-client.ts` + `lib/types.ts`, `features/auth/login-page.tsx`, `components/{header,sidebar,role-guard}.tsx`, `ui/{button,input,select}.tsx`, `lib/dexie-db.ts`. Tailwind 4 is wired via `@tailwindcss/vite` + `@import "tailwindcss"` in `index.css`.
+- `packages/client/src/features/queue/receptionist-page.tsx` — live receptionist desk (patient registration + check-in, patient lookup, today's queue) at `/queue`. Feature-page pattern: page composes feature components; `lib/api-client.ts` for API calls; shared types in `lib/types.ts`.
+- `packages/client/src/features/triage/{triage-page.tsx,components/vitals-form.tsx}` — live nurse triage at `/triage`: today's queue (NURSE role), select a WAITING/TRIAGED visit, record/edit vitals (live BMI preview), `POST /api/vitals` marks the visit `TRIAGED`.
+- `packages/client/src/features/consultation/{consultation-page.tsx,components/soap-form.tsx}` — doctor desk at `/consultation`: today's queue (DOCTOR role, selectable TRIAGED/IN_CONSULTATION), read-only vitals summary, SOAP notes form with optional ICD-10, `POST /api/consultations` marks the visit `IN_CONSULTATION`.
+
+Feature stubs still 0-byte: server `modules/{analytics,billing,lab-orders,prescriptions}/**`, `queue.gateway.ts`; client `features/{analytics,billing,lab,prescriptions}/**`, `sw.ts`, `docker-compose.yml`, `.github/workflows/deploy.yml`. **Always check a file's size/content before assuming it works.**
+
+## Not a real monorepo
+- Root `package.json` has **no workspace and no shared lockfile**; it only holds `concurrently` and convenience scripts. **`pnpm dev` at the root starts both packages** (API via `nest start --watch`, web via vite) — this is the expected way to run the project.
+- Each package has its own `node_modules` and `pnpm-lock.yaml`. Run `pnpm` commands from inside `packages/client` or `packages/server` — never from the root (except `pnpm dev`, `pnpm install`, `pnpm dev:install`).
+- All three package.json files define `scripts`: both packages have `dev`/`build`/`typecheck`; server also `start`, `start:dev`, `seed`; root also `dev:install`.
+
+## Server (`packages/server`) — NestJS 11 + Drizzle + postgres-js
+- Postgres: `DATABASE_URL`, falling back to `postgres://clinic_user:clinic_password@localhost:5432/clinic_db`. This DB/role must be created manually (no docker-compose yet).
+- Fresh-DB workflow: `pnpm exec drizzle-kit push` (creates tables from `schema.ts`) then `pnpm run seed`. `schema.ts` is the single source of truth — no generated migrations exist.
+- Seed users (password `password123`): `admin@clinic.com` (ADMIN), `doctor@clinic.com`, `nurse@clinic.com`, `receptionist@clinic.com`, `cashier@clinic.com`, `labtech@clinic.com` (LAB_TECH).
+- Drizzle is injected via `@Inject(DRIZZLE)`; controllers inject `PostgresJsDatabase<typeof schema>`.
+- `pnpm-workspace.yaml` `allowBuilds` for `bcrypt`/`esbuild` is set to `true` (was blocking their postinstall). If a native module breaks, check this file.
+- Roles (order-sensitive enum): `ADMIN, DOCTOR, NURSE, RECEPTIONIST, CASHIER, LAB_TECH`.
+- JWT: Bearer token, `JWT_SECRET` env (dev fallback `super-secret-key-change-in-prod`), 8h expiry. Global guards make **every route require auth by default** — use `@Public()` for exceptions and `@Roles('...')` for role gating.
+- Security hardening (in `main.ts`/`app.module.ts`): `helmet` headers, body-parser limit `16kb`, CORS allowlist (env `CORS_ORIGIN`, default `http://localhost:5173`), `X-Powered-By` disabled, optional `TRUST_PROXY`, global `@nestjs/throttler` rate limit (env `RATE_LIMIT_MAX`/`RATE_LIMIT_TTL_MS`, default 100/min) + tighter login throttle (env `LOGIN_RATE_LIMIT`, default 15/min), and **fail-fast in production** (refuses to boot without a strong `JWT_SECRET` and a `DATABASE_URL`). A global `LoggingInterceptor` logs every request (method, path, status, duration).
+- `express` is a **direct** dependency (imported by `main.ts`); `rxjs` and `@nestjs/throttler` are direct deps too. `tsconfig.json` has `esModuleInterop: true` for the `helmet` default import. Beware: pnpm's isolated layout means `node dist/main.js` won't resolve packages that are only transitive deps.
+- `tsconfig.json` sets `rootDir: ./src` (so `dist/main.js`, `dist/database/seeders/seed.js` land correctly), excludes `drizzle.config.ts`, and points `tsBuildInfoFile` into `dist/`. This keeps `rm -rf dist` a complete reset — if tsc ever emits nothing for "unchanged" files, the build-info was stale (it previously lived beside the tsconfig and survived `rm -rf dist`).
+
+## Client (`packages/client`) — React 19 + Vite 8 + Tailwind 4 + Dexie
+- `"type": "module"` in package.json; TS strict, `noEmit`. Dev server proxies `/api` → `http://localhost:3000` (Vite on :5173, API on :3000).
+- Auth flow: `AuthProvider` (localStorage `clinic_token`/`clinic_user`) → `useAuth()` hook; `lib/api-client.ts` wraps fetch (Bearer injection, 401 clears token).
+- Routes in `src/routes/index.tsx`: `/login` public; protected pages per role (`/queue` RECEPTIONIST, `/triage` NURSE, `/consultation` DOCTOR, `/lab` LAB_TECH, `/billing` CASHIER, `/analytics` ADMIN). Unimplemented features render `PlaceholderPage`. `/` redirects by role via `ROLE_HOMES`.
+- Offline-first intent: `lib/dexie-db.ts` (`vitals`/`consultations` with `synced` flag); `sw.ts`, sync/queue hooks are stubs only.
+- Intended realtime: socket.io-client + server `queue.gateway.ts` (empty stub).
+
+## Verification
+No test framework, linter, or CI. Practical checks: `pnpm exec tsc --noEmit` and `pnpm exec vite build` per package; boot the server with `pnpm start` and smoke-test `POST /api/auth/login`. Don't invent lint/test commands.

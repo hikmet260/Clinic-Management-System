@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+drizzle.config.js
+drizzle.config.js.map
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+*.swp
+
+# Vite
+.vite/

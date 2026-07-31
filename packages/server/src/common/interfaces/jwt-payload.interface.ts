@@ -1,0 +1,13 @@
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  role: string;
+  fullName: string;
+}
+
+export interface AuthenticatedUser {
+  userId: string;
+  email: string;
+  role: string;
+  fullName: string;
+}
