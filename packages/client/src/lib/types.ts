@@ -94,3 +94,96 @@ export interface ConsultationInput {
   icd10Code?: string;
   icd10Description?: string;
 }
+
+export type PaymentMethod = 'CASH' | 'CARD' | 'INSURANCE' | 'MOBILE_MONEY';
+
+export interface InvoiceItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  items: InvoiceItem[];
+  subtotal: string;
+  discount: string;
+  totalAmount: string;
+  isPaid: boolean;
+  paymentMethod: PaymentMethod | null;
+}
+
+export interface InvoiceRecord extends InvoiceSummary {
+  queueId: string;
+  patientId: string;
+  cashierId: string | null;
+  createdAt: string;
+}
+
+export interface BillableVisit extends QueueEntryWithPatient {
+  invoice: InvoiceSummary | null;
+}
+
+export interface InvoiceInput {
+  queueId: string;
+  items: InvoiceItem[];
+  discount?: number;
+  isPaid?: boolean;
+  paymentMethod?: PaymentMethod;
+}
+
+export type LabOrderStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface LabOrderRecord {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  queueId: string;
+  testName: string;
+  status: LabOrderStatus;
+  result: string | null;
+  labTechId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LabOrderWithVisit extends LabOrderRecord {
+  tokenNumber: number;
+  queueStatus: QueueStatus;
+  patientName: string;
+  patientMrn: string;
+}
+
+export interface CreateLabOrderInput {
+  queueId: string;
+  testName: string;
+}
+
+export interface UpdateLabOrderInput {
+  result?: string;
+  status?: 'COMPLETED' | 'CANCELLED';
+}
+
+export interface Medication {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions?: string;
+}
+
+export interface PrescriptionRecord {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  doctorId: string;
+  medications: Medication[];
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface PrescriptionInput {
+  queueId: string;
+  medications: Medication[];
+  notes?: string;
+}

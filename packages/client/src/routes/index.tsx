@@ -5,6 +5,8 @@ import { LoginPage } from '../features/auth/login-page';
 import { ReceptionistPage } from '../features/queue/receptionist-page';
 import { TriagePage } from '../features/triage/triage-page';
 import { ConsultationPage } from '../features/consultation/consultation-page';
+import { CashierPage } from '../features/billing/cashier-page';
+import { LabTechPage } from '../features/lab/lab-tech-page';
 import { Header } from '../components/header';
 import { Sidebar } from '../components/sidebar';
 import { RoleGuard } from '../components/role-guard';
@@ -83,7 +85,7 @@ export function AppRoutes() {
         path="/lab"
         element={
           <ProtectedRoute roles={['LAB_TECH']}>
-            <PlaceholderPage title="Lab Orders" />
+            <LabTechPage />
           </ProtectedRoute>
         }
       />
@@ -91,7 +93,7 @@ export function AppRoutes() {
         path="/billing"
         element={
           <ProtectedRoute roles={['CASHIER']}>
-            <PlaceholderPage title="Billing" />
+            <CashierPage />
           </ProtectedRoute>
         }
       />

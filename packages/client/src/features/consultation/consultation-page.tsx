@@ -2,19 +2,32 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../../lib/api-client';
 import { Button } from '../../components/ui/button';
 import { SoapForm } from './components/soap-form';
+import { LabOrderPanel } from './components/lab-order-panel';
+import { PrescriptionForm } from '../prescriptions/components/prescription-form';
+import { PrescriptionDownload } from '../prescriptions/components/pdf-template';
 import { formatStatus, STATUS_STYLES } from '../queue/components/queue-table';
 import { cn } from '../../lib/utils';
-import type { ConsultationRecord, QueueEntryWithPatient, VitalsRecord } from '../../lib/types';
+import { useAuth } from '../../hooks/use-auth';
+import type {
+  ConsultationRecord,
+  LabOrderRecord,
+  PrescriptionRecord,
+  QueueEntryWithPatient,
+  VitalsRecord,
+} from '../../lib/types';
 
-const SELECTABLE = ['TRIAGED', 'IN_CONSULTATION'];
+const SELECTABLE = ['TRIAGED', 'IN_CONSULTATION', 'LAB_PENDING'];
 
 export function ConsultationPage() {
+  const { user } = useAuth();
   const [entries, setEntries] = useState<QueueEntryWithPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [consultation, setConsultation] = useState<ConsultationRecord | null | undefined>(undefined);
   const [vitals, setVitals] = useState<VitalsRecord | null | undefined>(undefined);
+  const [labOrders, setLabOrders] = useState<LabOrderRecord[] | undefined>(undefined);
+  const [prescription, setPrescription] = useState<PrescriptionRecord | null | undefined>(undefined);
 
   const refreshQueue = useCallback(async () => {
     try {
@@ -38,6 +51,8 @@ export function ConsultationPage() {
     setSelectedId(id);
     setConsultation(undefined);
     setVitals(undefined);
+    setLabOrders(undefined);
+    setPrescription(undefined);
     try {
       const record = await apiClient.get<ConsultationRecord>(`/consultations/${id}`);
       setConsultation(record);
@@ -50,6 +65,27 @@ export function ConsultationPage() {
     } catch {
       setVitals(null);
     }
+    try {
+      const record = await apiClient.get<LabOrderRecord[]>(`/lab-orders/${id}`);
+      setLabOrders(record);
+    } catch {
+      setLabOrders([]);
+    }
+    try {
+      const record = await apiClient.get<PrescriptionRecord>(`/prescriptions/${id}`);
+      setPrescription(record);
+    } catch {
+      setPrescription(null);
+    }
+  }
+
+  function handleOrdered(record: LabOrderRecord) {
+    setLabOrders((current) => (current ? [...current, record] : [record]));
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === record.queueId ? { ...entry, status: 'LAB_PENDING' } : entry,
+      ),
+    );
   }
 
   function handleSaved(record: ConsultationRecord) {
@@ -61,6 +97,10 @@ export function ConsultationPage() {
           : entry,
       ),
     );
+  }
+
+  function handlePrescriptionSaved(record: PrescriptionRecord) {
+    setPrescription(record);
   }
 
   return (
@@ -206,6 +246,32 @@ export function ConsultationPage() {
               ) : (
                 <SoapForm queueId={selected.id} initial={consultation} onSaved={handleSaved} />
               )}
+
+              <LabOrderPanel queueId={selected.id} orders={labOrders} onOrdered={handleOrdered} />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-700">Prescription</p>
+                  {prescription && user ? (
+                    <PrescriptionDownload
+                      prescription={prescription}
+                      patientName={selected.patientName}
+                      patientMrn={selected.patientMrn}
+                      doctorName={user.fullName}
+                      tokenNumber={selected.tokenNumber}
+                    />
+                  ) : null}
+                </div>
+                {prescription === undefined ? (
+                  <p className="py-2 text-sm text-slate-500">Loading…</p>
+                ) : (
+                  <PrescriptionForm
+                    queueId={selected.id}
+                    initial={prescription}
+                    onSaved={handlePrescriptionSaved}
+                  />
+                )}
+              </div>
             </div>
           )}
         </section>

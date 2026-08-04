@@ -11,6 +11,12 @@ export const STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-red-100 text-red-700',
 };
 
+export const LAB_STATUS_STYLES: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  COMPLETED: 'bg-emerald-100 text-emerald-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+};
+
 export function formatStatus(status: string): string {
   return status.replace(/_/g, ' ').toLowerCase();
 }

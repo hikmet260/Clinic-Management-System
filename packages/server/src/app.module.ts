@@ -7,6 +7,9 @@ import { PatientsModule } from './modules/patients/patients.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { VitalsModule } from './modules/vitals/vitals.module';
 import { ConsultationsModule } from './modules/consultations/consultations.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { LabOrdersModule } from './modules/lab-orders/lab-orders.module';
+import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -22,6 +25,9 @@ const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 100;
     QueueModule,
     VitalsModule,
     ConsultationsModule,
+    BillingModule,
+    LabOrdersModule,
+    PrescriptionsModule,
     ThrottlerModule.forRoot([{ ttl: RATE_LIMIT_TTL_MS, limit: RATE_LIMIT_MAX }]),
   ],
   providers: [
