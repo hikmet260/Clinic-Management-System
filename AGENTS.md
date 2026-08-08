@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Repo state (important)
-Early-stage scaffold with **no git commits** and **no README/CI**. The **auth foundation works end-to-end** (server boots, client boots, login → role-guarded shell), but every feature module is still a placeholder.
+Early-stage scaffold with **no README**; CI (`.github/workflows/ci.yml`) and a Postgres `docker-compose.yml` exist. The **auth foundation works end-to-end** (server boots, client boots, login → role-guarded shell), but every feature module is still a placeholder.
 
 Real so far:
 - `packages/server/src/main.ts` — NestJS bootstrap (`/api` global prefix, CORS, `PORT ?? 3000`, loads `.env`)
@@ -24,7 +24,7 @@ Real so far:
 - `packages/client/src/features/lab/{lab-tech-page.tsx,components/result-entry-form.tsx}` — lab tech desk at `/lab`: today's orders (from `GET /api/lab-orders`, pending first), select an order, enter result / complete / cancel (`PATCH /api/lab-orders/:orderId`). The doctor desk (`consultation-page.tsx` + `components/lab-order-panel.tsx`) can order tests from a selected visit — visit status updates to `LAB_PENDING` locally. `LAB_STATUS_STYLES` lives in `features/queue/components/queue-table.tsx`.
 - `packages/client/src/features/prescriptions/{components/prescription-form.tsx,components/pdf-template.tsx}` — prescription UI embedded in the doctor desk (consultation-page, no separate route): dynamic medication rows (name/dosage/frequency/duration/instructions + notes) posting to `POST /api/prescriptions`; read-only fetch via `GET /api/prescriptions/:queueId`; printable/downloadable PDF via `@react-pdf/renderer` (`PrescriptionPDF` Document + `PrescriptionDownload` link in `pdf-template.tsx`). Visit status is unchanged by prescriptions.
 
-Feature stubs still 0-byte: server `modules/analytics/**` (module+service but no controller), `queue.gateway.ts`; client `features/analytics/**`, `features/lab/components/lab-order-modal.tsx`, `features/prescriptions/prescription-list.tsx`, `features/{queue,consultation,triage}/**/nurse-triage-page.tsx|doctor-desk-page.tsx|monitor-display.tsx`, `hooks/{use-offline-sync,use-socket-queue}.ts`, `sw.ts`, `docker-compose.yml`, `.github/workflows/deploy.yml`. **Always check a file's size/content before assuming it works.**
+Feature stubs still 0-byte: client `features/lab/components/lab-order-modal.tsx`, `features/prescriptions/prescription-list.tsx`, `hooks/use-offline-sync.ts`, `sw.ts`. **Always check a file's size/content before assuming it works.**
 
 ## Not a real monorepo
 - Root `package.json` has **no workspace and no shared lockfile**; it only holds `concurrently` and convenience scripts. **`pnpm dev` at the root starts both packages** (API via `nest start --watch`, web via vite) — this is the expected way to run the project.
@@ -32,8 +32,8 @@ Feature stubs still 0-byte: server `modules/analytics/**` (module+service but no
 - All three package.json files define `scripts`: both packages have `dev`/`build`/`typecheck`; server also `start`, `start:dev`, `seed`; root also `dev:install`.
 
 ## Server (`packages/server`) — NestJS 11 + Drizzle + postgres-js
-- Postgres: `DATABASE_URL`, falling back to `postgres://clinic_user:clinic_password@localhost:5432/clinic_db`. This DB/role must be created manually (no docker-compose yet).
-- Fresh-DB workflow: `pnpm exec drizzle-kit push` (creates tables from `schema.ts`) then `pnpm run seed`. `schema.ts` is the single source of truth — no generated migrations exist.
+- Postgres: `DATABASE_URL`, falling back to `postgres://clinic_user:clinic_password@localhost:5432/clinic_db`. Bring up the DB with `docker compose up -d` (root `docker-compose.yml`, env-overridable via `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`/`POSTGRES_PORT`; see `.env.example`).
+- Fresh-DB workflow: `docker compose up -d` (if needed) then `pnpm exec drizzle-kit push` (creates tables from `schema.ts`) then `pnpm run seed`. `schema.ts` is the single source of truth — no generated migrations exist.
 - Seed users (password `password123`): `admin@clinic.com` (ADMIN), `doctor@clinic.com`, `nurse@clinic.com`, `receptionist@clinic.com`, `cashier@clinic.com`, `labtech@clinic.com` (LAB_TECH).
 - Drizzle is injected via `@Inject(DRIZZLE)`; controllers inject `PostgresJsDatabase<typeof schema>`.
 - `pnpm-workspace.yaml` `allowBuilds` for `bcrypt`/`esbuild` is set to `true` (was blocking their postinstall). If a native module breaks, check this file.

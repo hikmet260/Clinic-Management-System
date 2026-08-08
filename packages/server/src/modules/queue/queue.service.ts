@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
+import { QueueGateway } from './queue.gateway';
 
 const ACTIVE_STATUSES = ['WAITING', 'TRIAGED', 'IN_CONSULTATION', 'LAB_PENDING'] as const;
 
@@ -12,7 +13,10 @@ const MAX_TOKEN_RETRIES = 3;
 
 @Injectable()
 export class QueueService {
-  constructor(@Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>) {}
+  constructor(
+    @Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>,
+    private readonly queueGateway: QueueGateway,
+  ) {}
 
   private startOfToday(): Date {
     const date = new Date();
@@ -91,7 +95,9 @@ export class QueueService {
       throw new NotFoundException('Patient not found');
     }
 
-    return this.allocateTokenAndInsert(patientId);
+    const entry = await this.allocateTokenAndInsert(patientId);
+    this.queueGateway.broadcastQueueChanged('visit-registered');
+    return entry;
   }
 
   async listToday() {
@@ -122,4 +128,36 @@ export class QueueService {
       hasConsultation: Boolean(consultationId),
     }));
   }
+
+  async listMonitor() {
+    const rows = await this.db
+      .select({
+        tokenNumber: schema.queue.tokenNumber,
+        status: schema.queue.status,
+        patientName: schema.patients.fullName,
+        vitalsId: schema.vitals.id,
+        consultationId: schema.consultations.id,
+      })
+      .from(schema.queue)
+      .innerJoin(schema.patients, eq(schema.queue.patientId, schema.patients.id))
+      .leftJoin(schema.vitals, eq(schema.vitals.queueId, schema.queue.id))
+      .leftJoin(schema.consultations, eq(schema.consultations.queueId, schema.queue.id))
+      .where(gte(schema.queue.createdAt, this.startOfToday()))
+      .orderBy(asc(schema.queue.tokenNumber));
+
+    return rows.map((row) => ({
+      tokenNumber: row.tokenNumber,
+      status: row.status,
+      hasVitals: Boolean(row.vitalsId),
+      hasConsultation: Boolean(row.consultationId),
+      displayName: maskName(row.patientName),
+    }));
+  }
+}
+
+function maskName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  const first = parts[0] ?? fullName;
+  const lastInitial = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() : '';
+  return lastInitial ? `${first} ${lastInitial}.` : first;
 }

@@ -1,9 +1,11 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { ilike, or } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { randomBytes } from 'node:crypto';
 import * as schema from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Gender = 'MALE' | 'FEMALE' | 'OTHER';
 
@@ -71,5 +73,98 @@ export class PatientsService {
       )
       .orderBy(schema.patients.fullName)
       .limit(20);
+  }
+
+  async findHistory(patientId: string) {
+    if (!patientId || !UUID_REGEX.test(patientId)) {
+      throw new BadRequestException('patientId must be a valid UUID');
+    }
+
+    const [patient] = await this.db
+      .select()
+      .from(schema.patients)
+      .where(eq(schema.patients.id, patientId));
+
+    if (!patient) {
+      throw new NotFoundException('Patient not found');
+    }
+
+    const visits = await this.db
+      .select()
+      .from(schema.queue)
+      .where(eq(schema.queue.patientId, patientId))
+      .orderBy(desc(schema.queue.createdAt));
+
+    if (visits.length === 0) {
+      return { patient, visits: [] };
+    }
+
+    const queueIds = visits.map((visit) => visit.id);
+
+    const [vitals, consultations, invoices] = await Promise.all([
+      this.db.select().from(schema.vitals).where(inArray(schema.vitals.queueId, queueIds)),
+      this.db.select().from(schema.consultations).where(inArray(schema.consultations.queueId, queueIds)),
+      this.db.select().from(schema.invoices).where(inArray(schema.invoices.queueId, queueIds)),
+    ]);
+
+    const consultationByQueue = new Map(consultations.map((c) => [c.queueId, c]));
+    const consultationIds = [...consultationByQueue.values()].map((c) => c.id);
+
+    const [labOrders, prescriptions] = consultationIds.length
+      ? await Promise.all([
+          this.db
+            .select()
+            .from(schema.labOrders)
+            .where(inArray(schema.labOrders.consultationId, consultationIds)),
+          this.db
+            .select()
+            .from(schema.prescriptions)
+            .where(inArray(schema.prescriptions.consultationId, consultationIds)),
+        ])
+      : [[], []];
+
+    const labByConsultation = new Map<string, (typeof labOrders)[number][]>();
+    for (const order of labOrders) {
+      const list = labByConsultation.get(order.consultationId);
+      if (list) {
+        list.push(order);
+      } else {
+        labByConsultation.set(order.consultationId, [order]);
+      }
+    }
+
+    const rxByConsultation = new Map<string, (typeof prescriptions)[number][]>();
+    for (const rx of prescriptions) {
+      const list = rxByConsultation.get(rx.consultationId);
+      if (list) {
+        list.push(rx);
+      } else {
+        rxByConsultation.set(rx.consultationId, [rx]);
+      }
+    }
+
+    return {
+      patient,
+      visits: visits.map((visit) => {
+        const consultation = consultationByQueue.get(visit.id) ?? null;
+        return {
+          id: visit.id,
+          tokenNumber: visit.tokenNumber,
+          status: visit.status,
+          createdAt: visit.createdAt,
+          updatedAt: visit.updatedAt,
+          vitals: vitals.find((record) => record.queueId === visit.id) ?? null,
+          consultation,
+          invoice: invoices.find((record) => record.queueId === visit.id) ?? null,
+          labOrders: consultation
+            ? (labByConsultation.get(consultation.id) ?? []).map((order) => ({
+                ...order,
+                queueId: visit.id,
+              }))
+            : [],
+          prescriptions: consultation ? (rxByConsultation.get(consultation.id) ?? []) : [],
+        };
+      }),
+    };
   }
 }

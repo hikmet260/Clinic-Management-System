@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
+import { QueueGateway } from '../queue/queue.gateway';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,7 +21,10 @@ export interface ConsultationInput {
 
 @Injectable()
 export class ConsultationsService {
-  constructor(@Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>) {}
+  constructor(
+    @Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>,
+    private readonly queueGateway: QueueGateway,
+  ) {}
 
   async findForVisit(queueId: string) {
     if (!queueId || !UUID_REGEX.test(queueId)) {
@@ -93,6 +97,7 @@ export class ConsultationsService {
       .set({ status: 'IN_CONSULTATION', updatedAt: new Date() })
       .where(eq(schema.queue.id, queueId));
 
+    this.queueGateway.broadcastQueueChanged('consultation-updated');
     return record;
   }
 }

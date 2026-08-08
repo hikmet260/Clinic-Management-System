@@ -3,6 +3,7 @@ import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
+import { QueueGateway } from '../queue/queue.gateway';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,7 +21,10 @@ export interface UpdateLabOrderInput {
 
 @Injectable()
 export class LabOrdersService {
-  constructor(@Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>) {}
+  constructor(
+    @Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>,
+    private readonly queueGateway: QueueGateway,
+  ) {}
 
   private startOfToday(): Date {
     const date = new Date();
@@ -75,6 +79,7 @@ export class LabOrdersService {
       .set({ status: 'LAB_PENDING', updatedAt: new Date() })
       .where(eq(schema.queue.id, queueId));
 
+    this.queueGateway.broadcastQueueChanged('lab-order-created');
     return record;
   }
 
@@ -203,6 +208,7 @@ export class LabOrdersService {
       }
     }
 
+    this.queueGateway.broadcastQueueChanged('lab-order-resolved');
     return record;
   }
 }

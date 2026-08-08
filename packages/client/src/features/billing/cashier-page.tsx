@@ -5,6 +5,7 @@ import { InvoiceBuilder } from './components/invoice-builder';
 import { ThermalReceipt } from './components/thermal-receipt';
 import { formatStatus, STATUS_STYLES } from '../queue/components/queue-table';
 import { cn } from '../../lib/utils';
+import { useQueueSocket } from '../../hooks/use-socket-queue';
 import type { BillableVisit, InvoiceRecord, PaymentMethod } from '../../lib/types';
 
 const UNBILLABLE = ['COMPLETED', 'CANCELLED'];
@@ -32,6 +33,8 @@ export function CashierPage() {
   useEffect(() => {
     void refreshQueue();
   }, [refreshQueue]);
+
+  useQueueSocket(refreshQueue);
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? null;
 

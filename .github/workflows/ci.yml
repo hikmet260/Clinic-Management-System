@@ -1,11 +1,11 @@
-name: Deploy
+name: CI
 
 on:
   push:
-    branches: [main]
+  pull_request:
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,20 +29,14 @@ jobs:
       - name: Install client
         run: pnpm -C packages/client install --frozen-lockfile
 
+      - name: Typecheck server
+        run: pnpm -C packages/server typecheck
+
+      - name: Typecheck client
+        run: pnpm -C packages/client typecheck
+
       - name: Build server
         run: pnpm -C packages/server build
 
       - name: Build client
         run: pnpm -C packages/client build
-
-      - name: Upload server build
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-dist
-          path: packages/server/dist
-
-      - name: Upload client build
-        uses: actions/upload-artifact@v4
-        with:
-          name: client-dist
-          path: packages/client/dist

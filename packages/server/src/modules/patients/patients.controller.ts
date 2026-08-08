@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { PatientsService, CreatePatientInput } from './patients.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -10,6 +10,12 @@ export class PatientsController {
   @Get('search')
   search(@Query('q') q?: string) {
     return this.patientsService.search(q ?? '');
+  }
+
+  @Get(':id/history')
+  @Roles('DOCTOR', 'RECEPTIONIST')
+  history(@Param('id') id: string) {
+    return this.patientsService.findHistory(id);
   }
 
   @Post()

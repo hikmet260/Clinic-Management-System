@@ -7,10 +7,11 @@ import { TriagePage } from '../features/triage/triage-page';
 import { ConsultationPage } from '../features/consultation/consultation-page';
 import { CashierPage } from '../features/billing/cashier-page';
 import { LabTechPage } from '../features/lab/lab-tech-page';
+import { AnalyticsPage } from '../features/analytics/analytics-page';
+import { MonitorDisplay } from '../features/queue/components/monitor-display';
 import { Header } from '../components/header';
 import { Sidebar } from '../components/sidebar';
 import { RoleGuard } from '../components/role-guard';
-import { PlaceholderPage } from '../features/placeholder-page';
 
 const ROLE_HOMES: Record<string, string> = {
   ADMIN: '/analytics',
@@ -53,6 +54,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/monitor" element={<MonitorDisplay />} />
       <Route
         path="/"
         element={<Navigate to={user ? (ROLE_HOMES[user.role] ?? '/login') : '/login'} replace />}
@@ -101,7 +103,7 @@ export function AppRoutes() {
         path="/analytics"
         element={
           <ProtectedRoute roles={['ADMIN']}>
-            <PlaceholderPage title="Analytics" />
+            <AnalyticsPage />
           </ProtectedRoute>
         }
       />

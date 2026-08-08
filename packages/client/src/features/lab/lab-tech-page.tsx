@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { ResultEntryForm } from './components/result-entry-form';
 import { formatStatus, LAB_STATUS_STYLES, STATUS_STYLES } from '../queue/components/queue-table';
 import { cn } from '../../lib/utils';
+import { useQueueSocket } from '../../hooks/use-socket-queue';
 import type { LabOrderRecord, LabOrderWithVisit } from '../../lib/types';
 
 export function LabTechPage() {
@@ -27,6 +28,8 @@ export function LabTechPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useQueueSocket(refresh);
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? null;
 

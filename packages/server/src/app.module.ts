@@ -10,6 +10,7 @@ import { ConsultationsModule } from './modules/consultations/consultations.modul
 import { BillingModule } from './modules/billing/billing.module';
 import { LabOrdersModule } from './modules/lab-orders/lab-orders.module';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -28,6 +29,7 @@ const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 100;
     BillingModule,
     LabOrdersModule,
     PrescriptionsModule,
+    AnalyticsModule,
     ThrottlerModule.forRoot([{ ttl: RATE_LIMIT_TTL_MS, limit: RATE_LIMIT_MAX }]),
   ],
   providers: [

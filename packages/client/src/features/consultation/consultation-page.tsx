@@ -5,9 +5,11 @@ import { SoapForm } from './components/soap-form';
 import { LabOrderPanel } from './components/lab-order-panel';
 import { PrescriptionForm } from '../prescriptions/components/prescription-form';
 import { PrescriptionDownload } from '../prescriptions/components/pdf-template';
+import { PastHistory } from './components/past-history';
 import { formatStatus, STATUS_STYLES } from '../queue/components/queue-table';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../hooks/use-auth';
+import { useQueueSocket } from '../../hooks/use-socket-queue';
 import type {
   ConsultationRecord,
   LabOrderRecord,
@@ -44,6 +46,8 @@ export function ConsultationPage() {
   useEffect(() => {
     void refreshQueue();
   }, [refreshQueue]);
+
+  useQueueSocket(refreshQueue);
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? null;
 
@@ -240,6 +244,15 @@ export function ConsultationPage() {
                   No vitals recorded for this visit yet.
                 </p>
               )}
+
+              <details className="rounded-lg border border-slate-200">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-slate-700">
+                  Previous visits
+                </summary>
+                <div className="border-t border-slate-100 px-3 py-3">
+                  <PastHistory patientId={selected.patientId} currentVisitId={selected.id} />
+                </div>
+              </details>
 
               {consultation === undefined ? (
                 <p className="py-4 text-center text-sm text-slate-500">Loading notes…</p>

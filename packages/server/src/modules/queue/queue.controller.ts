@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Roles('RECEPTIONIST')
 @Controller('queue')
@@ -11,6 +12,12 @@ export class QueueController {
   @Roles('NURSE', 'RECEPTIONIST', 'DOCTOR')
   listToday() {
     return this.queueService.listToday();
+  }
+
+  @Get('monitor')
+  @Public()
+  monitor() {
+    return this.queueService.listMonitor();
   }
 
   @Post('register')

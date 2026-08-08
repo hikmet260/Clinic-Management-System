@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { RegistrationForm } from '../patients/components/registration-form';
 import { PatientLookup } from '../patients/patient-lookup-page';
 import { QueueTable } from './components/queue-table';
+import { useQueueSocket } from '../../hooks/use-socket-queue';
 import type { Patient, QueueEntryWithPatient } from '../../lib/types';
 
 export function ReceptionistPage() {
@@ -28,6 +29,8 @@ export function ReceptionistPage() {
     void refreshQueue();
   }, [refreshQueue]);
 
+  useQueueSocket(refreshQueue);
+
   async function checkIn(patient: Patient) {
     try {
       await apiClient.post('/queue/register', { patientId: patient.id });
@@ -49,9 +52,14 @@ export function ReceptionistPage() {
           <h1 className="text-xl font-semibold text-slate-900">Receptionist Desk</h1>
           <p className="text-sm text-slate-500">Register patients and manage today's queue.</p>
         </div>
-        <Button variant="secondary" onClick={() => setShowRegistration((v) => !v)}>
-          {showRegistration ? 'Close form' : 'Register new patient'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => window.open('/monitor', '_blank', 'noopener,noreferrer')}>
+            Open waiting-room monitor
+          </Button>
+          <Button variant="secondary" onClick={() => setShowRegistration((v) => !v)}>
+            {showRegistration ? 'Close form' : 'Register new patient'}
+          </Button>
+        </div>
       </div>
 
       {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}

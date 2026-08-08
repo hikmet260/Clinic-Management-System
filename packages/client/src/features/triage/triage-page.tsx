@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { VitalsForm } from './components/vitals-form';
 import { formatStatus, STATUS_STYLES } from '../queue/components/queue-table';
 import { cn } from '../../lib/utils';
+import { useQueueSocket } from '../../hooks/use-socket-queue';
 import type { QueueEntryWithPatient, VitalsRecord } from '../../lib/types';
 
 const TRIAGEABLE = ['WAITING', 'TRIAGED'];
@@ -30,6 +31,8 @@ export function TriagePage() {
   useEffect(() => {
     void refreshQueue();
   }, [refreshQueue]);
+
+  useQueueSocket(refreshQueue);
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? null;
 

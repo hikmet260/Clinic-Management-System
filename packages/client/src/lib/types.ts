@@ -187,3 +187,85 @@ export interface PrescriptionInput {
   medications: Medication[];
   notes?: string;
 }
+
+export type AnalyticsRange = 'today' | '7d' | '30d' | 'all';
+
+export interface DayCount {
+  date: string;
+  count: number;
+}
+
+export interface DayRevenue {
+  date: string;
+  amount: string;
+}
+
+export interface StatusCount {
+  status: QueueStatus;
+  count: number;
+}
+
+export interface GenderCount {
+  gender: Gender;
+  count: number;
+}
+
+export interface Icd10Count {
+  code: string;
+  description: string | null;
+  count: number;
+}
+
+export interface LabTestCount {
+  testName: string;
+  count: number;
+}
+
+export interface PaymentMethodRevenue {
+  method: PaymentMethod;
+  amount: string;
+}
+
+export interface AnalyticsOverview {
+  range: AnalyticsRange;
+  totals: {
+    totalVisits: number;
+    activeNow: number;
+    completed: number;
+    cancelled: number;
+    avgWaitMinutes: number | null;
+    avgVisitDurationMinutes: number | null;
+    newPatients: number;
+  };
+  revenue: {
+    totalRevenue: string;
+    outstanding: string;
+    invoiceCount: number;
+    paidCount: number;
+    byPaymentMethod: PaymentMethodRevenue[];
+  };
+  visitsByDay: DayCount[];
+  revenueByDay: DayRevenue[];
+  visitsByStatus: StatusCount[];
+  patientsByGender: GenderCount[];
+  topIcd10: Icd10Count[];
+  topLabTests: LabTestCount[];
+}
+
+export interface PatientHistoryVisit {
+  id: string;
+  tokenNumber: number;
+  status: QueueStatus;
+  createdAt: string;
+  updatedAt: string;
+  vitals: VitalsRecord | null;
+  consultation: ConsultationRecord | null;
+  invoice: InvoiceRecord | null;
+  labOrders: LabOrderRecord[];
+  prescriptions: PrescriptionRecord[];
+}
+
+export interface PatientHistory {
+  patient: Patient;
+  visits: PatientHistoryVisit[];
+}

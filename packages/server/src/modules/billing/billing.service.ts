@@ -3,6 +3,7 @@ import { asc, eq, gte } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
+import { QueueGateway } from '../queue/queue.gateway';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -35,7 +36,10 @@ function money(n: number): string {
 
 @Injectable()
 export class BillingService {
-  constructor(@Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>) {}
+  constructor(
+    @Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>,
+    private readonly queueGateway: QueueGateway,
+  ) {}
 
   private startOfToday(): Date {
     const date = new Date();
@@ -192,6 +196,7 @@ export class BillingService {
       .set({ status: 'BILLED', updatedAt: new Date() })
       .where(eq(schema.queue.id, queueId));
 
+    this.queueGateway.broadcastQueueChanged('visit-billed');
     return record;
   }
 
@@ -222,6 +227,7 @@ export class BillingService {
       .where(eq(schema.invoices.id, invoiceId))
       .returning();
 
+    this.queueGateway.broadcastQueueChanged('invoice-paid');
     return record;
   }
 }
