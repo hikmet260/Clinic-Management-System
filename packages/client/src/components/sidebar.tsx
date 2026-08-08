@@ -9,11 +9,13 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/queue', label: 'Queue', roles: ['RECEPTIONIST'] },
+  { to: '/patients', label: 'Patients', roles: ['RECEPTIONIST', 'ADMIN'] },
   { to: '/triage', label: 'Triage & Vitals', roles: ['NURSE'] },
   { to: '/consultation', label: 'Doctor Desk', roles: ['DOCTOR'] },
   { to: '/lab', label: 'Lab Orders', roles: ['LAB_TECH'] },
   { to: '/billing', label: 'Billing', roles: ['CASHIER'] },
   { to: '/analytics', label: 'Analytics', roles: ['ADMIN'] },
+  { to: '/users', label: 'Staff & Users', roles: ['ADMIN'] },
 ];
 
 export function Sidebar() {

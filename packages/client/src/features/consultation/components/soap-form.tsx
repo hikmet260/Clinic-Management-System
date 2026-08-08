@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { apiClient } from '../../../lib/api-client';
+import { isNetworkError, enqueueConsultationOffline } from '../../../hooks/use-offline-sync';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import type { ConsultationInput, ConsultationRecord } from '../../../lib/types';
@@ -18,26 +19,46 @@ export function SoapForm({ queueId, initial, onSaved }: SoapFormProps) {
   const [icd10Code, setIcd10Code] = useState(initial?.icd10Code ?? '');
   const [icd10Description, setIcd10Description] = useState(initial?.icd10Description ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
     setSaving(true);
+    const payload: ConsultationInput = {
+      queueId,
+      subjective: subjective.trim(),
+      objective: objective.trim(),
+      assessment: assessment.trim(),
+      plan: plan.trim(),
+      icd10Code: icd10Code.trim() || undefined,
+      icd10Description: icd10Description.trim() || undefined,
+    };
     try {
-      const payload: ConsultationInput = {
-        queueId,
-        subjective: subjective.trim(),
-        objective: objective.trim(),
-        assessment: assessment.trim(),
-        plan: plan.trim(),
-        icd10Code: icd10Code.trim() || undefined,
-        icd10Description: icd10Description.trim() || undefined,
-      };
       const record = await apiClient.post<ConsultationRecord>('/consultations', payload);
       onSaved(record);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save consultation');
+      if (isNetworkError(err)) {
+        const queued = await enqueueConsultationOffline(payload);
+        onSaved({
+          id: `offline-${queued.id}`,
+          queueId: queued.queueId,
+          patientId: '',
+          doctorId: '',
+          subjective: queued.subjective,
+          objective: queued.objective,
+          assessment: queued.assessment,
+          plan: queued.plan,
+          icd10Code: queued.icd10Code ?? null,
+          icd10Description: queued.icd10Description ?? null,
+          createdAt: queued.createdAt,
+        });
+        setNotice("Saved offline — will sync when you're back online.");
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save consultation');
+      }
     } finally {
       setSaving(false);
     }
@@ -125,6 +146,9 @@ export function SoapForm({ queueId, initial, onSaved }: SoapFormProps) {
         />
       </div>
       {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {notice ? (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>
+      ) : null}
       <Button type="submit" className="w-full" disabled={saving}>
         {saving ? 'Saving…' : initial ? 'Update consultation' : 'Save consultation'}
       </Button>

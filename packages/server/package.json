@@ -7,7 +7,11 @@
     "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "typecheck": "tsc --noEmit",
-    "seed": "tsc && node dist/database/seeders/seed.js"
+    "seed": "tsc && node dist/database/seeders/seed.js",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsc && node dist/database/migrate.js",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",
@@ -32,11 +36,15 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
+    "@nestjs/testing": "^11.1.28",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
     "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^7.2.1",
     "drizzle-kit": "^0.31.10",
-    "typescript": "^6.0.3"
+    "supertest": "^7.2.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }

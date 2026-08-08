@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { desc, eq, ilike, inArray, or } from 'drizzle-orm';
+import { desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { randomBytes } from 'node:crypto';
 import * as schema from '../../database/schema';
@@ -73,6 +73,32 @@ export class PatientsService {
       )
       .orderBy(schema.patients.fullName)
       .limit(20);
+  }
+
+  async list(query: string, page: number, pageSize: number) {
+    const q = query.trim();
+    const where = q
+      ? or(
+          ilike(schema.patients.fullName, `%${q}%`),
+          ilike(schema.patients.phone, `%${q}%`),
+          ilike(schema.patients.mrn, `%${q}%`),
+        )
+      : undefined;
+
+    const [{ count }] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.patients)
+      .where(where);
+
+    const items = await this.db
+      .select()
+      .from(schema.patients)
+      .where(where)
+      .orderBy(schema.patients.fullName)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    return { items, total: Number(count), page, pageSize };
   }
 
   async findHistory(patientId: string) {

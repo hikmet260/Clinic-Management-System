@@ -14,6 +14,8 @@ const SOCKET_ORIGINS = process.env.CORS_ORIGIN
 
 export type QueueChangeReason =
   | 'visit-registered'
+  | 'visit-cancelled'
+  | 'visit-completed'
   | 'vitals-updated'
   | 'consultation-updated'
   | 'visit-billed'

@@ -7,6 +7,8 @@ import { QueueGateway } from './queue.gateway';
 
 const ACTIVE_STATUSES = ['WAITING', 'TRIAGED', 'IN_CONSULTATION', 'LAB_PENDING'] as const;
 
+const TERMINAL_STATUSES = ['BILLED', 'COMPLETED', 'CANCELLED'] as const;
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MAX_TOKEN_RETRIES = 3;
@@ -98,6 +100,62 @@ export class QueueService {
     const entry = await this.allocateTokenAndInsert(patientId);
     this.queueGateway.broadcastQueueChanged('visit-registered');
     return entry;
+  }
+
+  async cancelVisit(queueId: string) {
+    if (!UUID_REGEX.test(queueId)) {
+      throw new BadRequestException('queueId must be a valid UUID');
+    }
+
+    const [visit] = await this.db
+      .select()
+      .from(schema.queue)
+      .where(eq(schema.queue.id, queueId));
+
+    if (!visit) {
+      throw new NotFoundException('Visit not found');
+    }
+
+    if (!(ACTIVE_STATUSES as readonly string[]).includes(visit.status)) {
+      throw new BadRequestException('Only active visits can be cancelled');
+    }
+
+    const [updated] = await this.db
+      .update(schema.queue)
+      .set({ status: 'CANCELLED' })
+      .where(eq(schema.queue.id, queueId))
+      .returning();
+
+    this.queueGateway.broadcastQueueChanged('visit-cancelled');
+    return updated;
+  }
+
+  async completeVisit(queueId: string) {
+    if (!UUID_REGEX.test(queueId)) {
+      throw new BadRequestException('queueId must be a valid UUID');
+    }
+
+    const [visit] = await this.db
+      .select()
+      .from(schema.queue)
+      .where(eq(schema.queue.id, queueId));
+
+    if (!visit) {
+      throw new NotFoundException('Visit not found');
+    }
+
+    if (visit.status !== 'BILLED') {
+      throw new BadRequestException('Only billed visits can be marked complete');
+    }
+
+    const [updated] = await this.db
+      .update(schema.queue)
+      .set({ status: 'COMPLETED' })
+      .where(eq(schema.queue.id, queueId))
+      .returning();
+
+    this.queueGateway.broadcastQueueChanged('visit-completed');
+    return updated;
   }
 
   async listToday() {

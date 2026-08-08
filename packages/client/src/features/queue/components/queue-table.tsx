@@ -1,4 +1,5 @@
 import { cn } from '../../../lib/utils';
+import { Button } from '../../../components/ui/button';
 import type { QueueEntryWithPatient } from '../../../lib/types';
 
 export const STATUS_STYLES: Record<string, string> = {
@@ -17,14 +18,24 @@ export const LAB_STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-red-100 text-red-700',
 };
 
+const ACTIVE_STATUSES = ['WAITING', 'TRIAGED', 'IN_CONSULTATION', 'LAB_PENDING'];
+
 export function formatStatus(status: string): string {
   return status.replace(/_/g, ' ').toLowerCase();
 }
 
-export function QueueTable({ entries }: { entries: QueueEntryWithPatient[] }) {
+interface QueueTableProps {
+  entries: QueueEntryWithPatient[];
+  onCancel?: (entry: QueueEntryWithPatient) => void;
+  onComplete?: (entry: QueueEntryWithPatient) => void;
+}
+
+export function QueueTable({ entries, onCancel, onComplete }: QueueTableProps) {
   if (entries.length === 0) {
     return <p className="py-8 text-center text-sm text-slate-500">No patients in the queue today.</p>;
   }
+
+  const actions = Boolean(onCancel || onComplete);
 
   return (
     <div className="overflow-x-auto">
@@ -35,6 +46,7 @@ export function QueueTable({ entries }: { entries: QueueEntryWithPatient[] }) {
             <th className="py-2 pr-4">Patient</th>
             <th className="py-2 pr-4">MRN</th>
             <th className="py-2">Status</th>
+            {actions ? <th className="py-2 pl-4">Actions</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -53,6 +65,26 @@ export function QueueTable({ entries }: { entries: QueueEntryWithPatient[] }) {
                   {formatStatus(entry.status)}
                 </span>
               </td>
+              {actions ? (
+                <td className="py-2 pl-4">
+                  <div className="flex gap-1">
+                    {onCancel && ACTIVE_STATUSES.includes(entry.status) ? (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => onCancel(entry)}
+                      >
+                        Cancel
+                      </Button>
+                    ) : null}
+                    {onComplete && entry.status === 'BILLED' ? (
+                      <Button size="sm" onClick={() => onComplete(entry)}>
+                        Complete
+                      </Button>
+                    ) : null}
+                  </div>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

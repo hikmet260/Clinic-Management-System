@@ -12,6 +12,12 @@ if (!rootElement) {
   throw new Error('Root element #root not found');
 }
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../../lib/api-client';
 import { Button } from '../../components/ui/button';
-import { ResultEntryForm } from './components/result-entry-form';
+import { LabOrderModal } from './components/lab-order-modal';
 import { formatStatus, LAB_STATUS_STYLES, STATUS_STYLES } from '../queue/components/queue-table';
 import { cn } from '../../lib/utils';
 import { useQueueSocket } from '../../hooks/use-socket-queue';
@@ -12,6 +12,7 @@ export function LabTechPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -126,11 +127,29 @@ export function LabTechPage() {
                 </span>
               </div>
 
-              <ResultEntryForm order={selected} onUpdated={handleUpdated} />
+              {selected.status === 'PENDING' ? (
+                <Button className="w-full" onClick={() => setModalOpen(true)}>
+                  Record result
+                </Button>
+              ) : selected.status === 'COMPLETED' ? (
+                <p className="text-sm text-slate-700">
+                  <span className="font-medium text-slate-800">Result:</span> {selected.result}
+                </p>
+              ) : (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                  This order was cancelled.
+                </p>
+              )}
             </div>
           )}
         </section>
       </div>
+
+      <LabOrderModal
+        order={modalOpen ? selected : null}
+        onClose={() => setModalOpen(false)}
+        onUpdated={handleUpdated}
+      />
     </div>
   );
 }

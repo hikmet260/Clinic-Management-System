@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { apiClient } from '../../../lib/api-client';
+import { isNetworkError, enqueueVitalsOffline } from '../../../hooks/use-offline-sync';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import type { VitalsInput, VitalsRecord } from '../../../lib/types';
@@ -23,6 +24,7 @@ export function VitalsForm({ queueId, initial, onSaved }: VitalsFormProps) {
   const [height, setHeight] = useState(asString(initial?.height));
   const [notes, setNotes] = useState(asString(initial?.notes));
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const bmi = useMemo(() => {
@@ -40,22 +42,43 @@ export function VitalsForm({ queueId, initial, onSaved }: VitalsFormProps) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
     setSaving(true);
+    const payload: VitalsInput = {
+      queueId,
+      systolicBp: toNumber(systolicBp),
+      diastolicBp: toNumber(diastolicBp),
+      heartRate: toNumber(heartRate),
+      temperature: toNumber(temperature),
+      weight: toNumber(weight),
+      height: toNumber(height),
+      notes: notes || undefined,
+    };
     try {
-      const payload: VitalsInput = {
-        queueId,
-        systolicBp: toNumber(systolicBp),
-        diastolicBp: toNumber(diastolicBp),
-        heartRate: toNumber(heartRate),
-        temperature: toNumber(temperature),
-        weight: toNumber(weight),
-        height: toNumber(height),
-        notes: notes || undefined,
-      };
       const record = await apiClient.post<VitalsRecord>('/vitals', payload);
       onSaved(record);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save vitals');
+      if (isNetworkError(err)) {
+        const queued = await enqueueVitalsOffline(payload);
+        onSaved({
+          id: `offline-${queued.id}`,
+          queueId: queued.queueId,
+          patientId: '',
+          nurseId: '',
+          systolicBp: queued.systolicBp ?? null,
+          diastolicBp: queued.diastolicBp ?? null,
+          heartRate: queued.heartRate ?? null,
+          temperature: queued.temperature != null ? String(queued.temperature) : null,
+          weight: queued.weight != null ? String(queued.weight) : null,
+          height: queued.height != null ? String(queued.height) : null,
+          bmi: null,
+          notes: queued.notes ?? null,
+          createdAt: queued.createdAt,
+        });
+        setNotice("Saved offline — will sync when you're back online.");
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save vitals');
+      }
     } finally {
       setSaving(false);
     }
@@ -152,6 +175,9 @@ export function VitalsForm({ queueId, initial, onSaved }: VitalsFormProps) {
         />
       </div>
       {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {notice ? (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>
+      ) : null}
       <Button type="submit" className="w-full" disabled={saving}>
         {saving ? 'Saving…' : initial ? 'Update vitals & mark triaged' : 'Save vitals & mark triaged'}
       </Button>

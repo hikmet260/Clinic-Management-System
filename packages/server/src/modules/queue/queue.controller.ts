@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -23,5 +23,16 @@ export class QueueController {
   @Post('register')
   register(@Body() body: { patientId?: string }) {
     return this.queueService.registerVisit(body.patientId ?? '');
+  }
+
+  @Patch(':id/cancel')
+  cancel(@Param('id') id: string) {
+    return this.queueService.cancelVisit(id);
+  }
+
+  @Patch(':id/complete')
+  @Roles('RECEPTIONIST', 'CASHIER')
+  complete(@Param('id') id: string) {
+    return this.queueService.completeVisit(id);
   }
 }

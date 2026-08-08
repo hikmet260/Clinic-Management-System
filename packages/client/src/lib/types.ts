@@ -1,5 +1,35 @@
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
 
+export type UserRole =
+  | 'ADMIN'
+  | 'DOCTOR'
+  | 'NURSE'
+  | 'RECEPTIONIST'
+  | 'CASHIER'
+  | 'LAB_TECH';
+
+export interface UserRecord {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  createdAt: string;
+}
+
+export interface CreateUserInput {
+  email: string;
+  password: string;
+  fullName: string;
+  role: UserRole;
+}
+
+export interface UpdateUserInput {
+  email?: string;
+  password?: string;
+  fullName?: string;
+  role?: UserRole;
+}
+
 export type QueueStatus =
   | 'WAITING'
   | 'TRIAGED'
@@ -268,4 +298,11 @@ export interface PatientHistoryVisit {
 export interface PatientHistory {
   patient: Patient;
   visits: PatientHistoryVisit[];
+}
+
+export interface PatientPage {
+  items: Patient[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

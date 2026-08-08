@@ -8,6 +8,8 @@ import { ConsultationPage } from '../features/consultation/consultation-page';
 import { CashierPage } from '../features/billing/cashier-page';
 import { LabTechPage } from '../features/lab/lab-tech-page';
 import { AnalyticsPage } from '../features/analytics/analytics-page';
+import { UsersPage } from '../features/users/users-page';
+import { PatientDirectoryPage } from '../features/patients/patient-directory-page';
 import { MonitorDisplay } from '../features/queue/components/monitor-display';
 import { Header } from '../components/header';
 import { Sidebar } from '../components/sidebar';
@@ -68,6 +70,14 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/patients"
+        element={
+          <ProtectedRoute roles={['RECEPTIONIST', 'ADMIN']}>
+            <PatientDirectoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/triage"
         element={
           <ProtectedRoute roles={['NURSE']}>
@@ -104,6 +114,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute roles={['ADMIN']}>
             <AnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute roles={['ADMIN']}>
+            <UsersPage />
           </ProtectedRoute>
         }
       />

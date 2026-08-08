@@ -40,6 +40,30 @@ export function ReceptionistPage() {
     }
   }
 
+  async function cancelVisit(entry: QueueEntryWithPatient) {
+    if (!window.confirm(`Cancel visit #${entry.tokenNumber} for ${entry.patientName}?`)) {
+      return;
+    }
+    try {
+      await apiClient.patch(`/queue/${entry.id}/cancel`);
+      await refreshQueue();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel visit');
+    }
+  }
+
+  async function completeVisit(entry: QueueEntryWithPatient) {
+    if (!window.confirm(`Mark visit #${entry.tokenNumber} for ${entry.patientName} as complete?`)) {
+      return;
+    }
+    try {
+      await apiClient.patch(`/queue/${entry.id}/complete`);
+      await refreshQueue();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to complete visit');
+    }
+  }
+
   function handleRegistered(patient: Patient) {
     void checkIn(patient);
     setShowRegistration(false);
@@ -84,7 +108,11 @@ export function ReceptionistPage() {
           {loading ? (
             <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
           ) : (
-            <QueueTable entries={entries} />
+            <QueueTable
+              entries={entries}
+              onCancel={(entry) => void cancelVisit(entry)}
+              onComplete={(entry) => void completeVisit(entry)}
+            />
           )}
         </section>
       </div>

@@ -28,7 +28,10 @@ export class BillingController {
   }
 
   @Patch(':invoiceId')
-  markPaid(@Param('invoiceId') invoiceId: string, @Body() body: { paymentMethod?: PaymentMethod }) {
+  markPaid(
+    @Param('invoiceId') invoiceId: string,
+    @Body() body: { paymentMethod?: PaymentMethod } = {},
+  ) {
     return this.billingService.markPaid(invoiceId, body.paymentMethod);
   }
 }

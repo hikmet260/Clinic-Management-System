@@ -1,0 +1,17 @@
+{
+  "name": "Clinic Management System",
+  "short_name": "Clinic",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0f172a",
+  "description": "Clinic front-desk, triage, consultations, lab, billing and analytics.",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
