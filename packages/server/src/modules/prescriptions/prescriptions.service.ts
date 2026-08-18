@@ -37,7 +37,7 @@ export class PrescriptionsService {
       .where(eq(schema.consultations.queueId, queueId));
 
     if (!consultation) {
-      throw new NotFoundException('No prescription recorded for this visit');
+      throw new NotFoundException('No consultation recorded for this visit');
     }
 
     const [record] = await this.db

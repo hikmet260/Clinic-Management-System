@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { PatientsService, CreatePatientInput } from './patients.service';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { PatientsService, CreatePatientInput, UpdatePatientInput } from './patients.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 
 @Roles('RECEPTIONIST')
@@ -29,7 +29,7 @@ export class PatientsController {
   }
 
   @Get(':id/history')
-  @Roles('DOCTOR', 'RECEPTIONIST')
+  @Roles('DOCTOR', 'RECEPTIONIST', 'ADMIN')
   history(@Param('id') id: string) {
     return this.patientsService.findHistory(id);
   }
@@ -37,5 +37,15 @@ export class PatientsController {
   @Post()
   create(@Body() body: CreatePatientInput) {
     return this.patientsService.create(body);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: UpdatePatientInput) {
+    return this.patientsService.update(id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.patientsService.remove(id);
   }
 }

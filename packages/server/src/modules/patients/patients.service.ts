@@ -20,6 +20,15 @@ export interface CreatePatientInput {
   emergencyContact?: string;
 }
 
+export interface UpdatePatientInput {
+  fullName?: string;
+  dob?: string;
+  gender?: string;
+  phone?: string;
+  address?: string;
+  emergencyContact?: string;
+}
+
 @Injectable()
 export class PatientsService {
   constructor(@Inject(DRIZZLE) private db: PostgresJsDatabase<typeof schema>) {}
@@ -99,6 +108,79 @@ export class PatientsService {
       .offset((page - 1) * pageSize);
 
     return { items, total: Number(count), page, pageSize };
+  }
+
+  async update(id: string, input: UpdatePatientInput) {
+    if (!id || !UUID_REGEX.test(id)) {
+      throw new BadRequestException('patientId must be a valid UUID');
+    }
+
+    const [existing] = await this.db
+      .select({ id: schema.patients.id })
+      .from(schema.patients)
+      .where(eq(schema.patients.id, id));
+    if (!existing) {
+      throw new NotFoundException('Patient not found');
+    }
+
+    const fullName = input.fullName?.trim();
+    const phone = input.phone?.trim();
+    const address = input.address?.trim();
+    const emergencyContact = input.emergencyContact?.trim();
+
+    const hasAny = [fullName, input.dob, input.gender, phone, address, emergencyContact].some(
+      (value) => value !== undefined,
+    );
+    if (!hasAny) {
+      throw new BadRequestException('Provide at least one field to update');
+    }
+
+    if (input.gender !== undefined) {
+      if (!GENDERS.includes(input.gender as Gender)) {
+        throw new BadRequestException(`gender must be one of ${GENDERS.join(', ')}`);
+      }
+    }
+
+    const [patient] = await this.db
+      .update(schema.patients)
+      .set({
+        fullName: fullName ?? undefined,
+        dob: input.dob ?? undefined,
+        gender: (input.gender as Gender) ?? undefined,
+        phone: phone ?? undefined,
+        address: address ?? undefined,
+        emergencyContact: emergencyContact ?? undefined,
+      })
+      .where(eq(schema.patients.id, id))
+      .returning();
+
+    return patient;
+  }
+
+  async remove(id: string) {
+    if (!id || !UUID_REGEX.test(id)) {
+      throw new BadRequestException('patientId must be a valid UUID');
+    }
+
+    const [existing] = await this.db
+      .select({ id: schema.patients.id })
+      .from(schema.patients)
+      .where(eq(schema.patients.id, id));
+    if (!existing) {
+      throw new NotFoundException('Patient not found');
+    }
+
+    const [visit] = await this.db
+      .select({ id: schema.queue.id })
+      .from(schema.queue)
+      .where(eq(schema.queue.patientId, id))
+      .limit(1);
+    if (visit) {
+      throw new BadRequestException('Cannot delete a patient with visit history');
+    }
+
+    await this.db.delete(schema.patients).where(eq(schema.patients.id, id));
+    return { deleted: true };
   }
 
   async findHistory(patientId: string) {

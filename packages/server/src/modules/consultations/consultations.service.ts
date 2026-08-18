@@ -70,6 +70,9 @@ export class ConsultationsService {
     if (TERMINAL_STATUSES.includes(visit.status)) {
       throw new BadRequestException('Cannot record a consultation for a completed visit');
     }
+    if (visit.status === 'WAITING') {
+      throw new BadRequestException('Patient must be triaged before a consultation');
+    }
 
     const [existing] = await this.db
       .select({ id: schema.consultations.id })
@@ -92,10 +95,12 @@ export class ConsultationsService {
         .returning();
     }
 
-    await this.db
-      .update(schema.queue)
-      .set({ status: 'IN_CONSULTATION', updatedAt: new Date() })
-      .where(eq(schema.queue.id, queueId));
+    if (visit.status !== 'LAB_PENDING') {
+      await this.db
+        .update(schema.queue)
+        .set({ status: 'IN_CONSULTATION', assignedDoctorId: doctorId, updatedAt: new Date() })
+        .where(eq(schema.queue.id, queueId));
+    }
 
     this.queueGateway.broadcastQueueChanged('consultation-updated');
     return record;

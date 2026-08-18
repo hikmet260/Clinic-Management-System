@@ -89,7 +89,7 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, input: UpdateUserInput) {
+  async update(id: string, input: UpdateUserInput, currentUserId: string) {
     if (!UUID_REGEX.test(id)) {
       throw new BadRequestException('id must be a valid UUID');
     }
@@ -100,6 +100,10 @@ export class UsersService {
       .where(eq(schema.users.id, id));
     if (!existing) {
       throw new NotFoundException('User not found');
+    }
+
+    if (id === currentUserId && input.role !== undefined && input.role !== existing.role) {
+      throw new BadRequestException('You cannot change your own role');
     }
 
     const fullName = input.fullName?.trim();
@@ -144,9 +148,12 @@ export class UsersService {
     return user;
   }
 
-  async remove(id: string) {
+  async remove(id: string, currentUserId: string) {
     if (!UUID_REGEX.test(id)) {
       throw new BadRequestException('id must be a valid UUID');
+    }
+    if (id === currentUserId) {
+      throw new BadRequestException('You cannot delete your own account');
     }
 
     const [existing] = await this.db

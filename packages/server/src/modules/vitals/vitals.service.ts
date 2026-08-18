@@ -103,14 +103,17 @@ export class VitalsService {
       height: height !== undefined ? String(height) : undefined,
       notes,
     };
-    if (weight !== undefined && height !== undefined) {
-      values.bmi = this.computeBmi(weight, height);
-    }
 
     const [existing] = await this.db
-      .select({ id: schema.vitals.id })
+      .select({ id: schema.vitals.id, weight: schema.vitals.weight, height: schema.vitals.height })
       .from(schema.vitals)
       .where(eq(schema.vitals.queueId, queueId));
+
+    const mergedWeight = weight ?? (existing?.weight != null ? Number(existing.weight) : undefined);
+    const mergedHeight = height ?? (existing?.height != null ? Number(existing.height) : undefined);
+    if (mergedWeight !== undefined && mergedHeight !== undefined) {
+      values.bmi = this.computeBmi(mergedWeight, mergedHeight);
+    }
 
     let record;
     if (existing) {
@@ -126,10 +129,12 @@ export class VitalsService {
         .returning();
     }
 
-    await this.db
-      .update(schema.queue)
-      .set({ status: 'TRIAGED', updatedAt: new Date() })
-      .where(eq(schema.queue.id, queueId));
+    if (visit.status === 'WAITING') {
+      await this.db
+        .update(schema.queue)
+        .set({ status: 'TRIAGED', updatedAt: new Date() })
+        .where(eq(schema.queue.id, queueId));
+    }
 
     this.queueGateway.broadcastQueueChanged('vitals-updated');
     return record;

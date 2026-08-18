@@ -114,6 +114,31 @@ describe('Billing', () => {
       .expect(400);
   });
 
+  it('preserves the chosen payment method when an unpaid invoice is later marked paid', async () => {
+    const { queueId } = await createPatientAndVisit(app, receptionistToken);
+
+    const invoice = await request(app.getHttpServer())
+      .post('/api/billing')
+      .set(authHeader(cashierToken))
+      .send({
+        queueId,
+        items: [{ name: 'Consultation', quantity: 1, unitPrice: 50 }],
+        paymentMethod: 'CARD',
+      })
+      .expect(201);
+
+    expect(invoice.body.isPaid).toBe(false);
+    expect(invoice.body.paymentMethod).toBe('CARD');
+
+    const paid = await request(app.getHttpServer())
+      .patch(`/api/billing/${invoice.body.id}`)
+      .set(authHeader(cashierToken))
+      .expect(200);
+
+    expect(paid.body.isPaid).toBe(true);
+    expect(paid.body.paymentMethod).toBe('CARD');
+  });
+
   it('requires at least one invoice item', async () => {
     const { queueId } = await createPatientAndVisit(app, receptionistToken);
     await request(app.getHttpServer())

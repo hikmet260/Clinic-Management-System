@@ -60,6 +60,15 @@ export interface NewPatientInput {
   emergencyContact?: string;
 }
 
+export interface UpdatePatientInput {
+  fullName?: string;
+  dob?: string;
+  gender?: Gender;
+  phone?: string;
+  address?: string;
+  emergencyContact?: string;
+}
+
 export interface QueueEntryWithPatient {
   id: string;
   patientId: string;

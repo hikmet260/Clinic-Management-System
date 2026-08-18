@@ -187,7 +187,7 @@ export class BillingService {
         discount: money(discount),
         totalAmount: money(totalAmount),
         isPaid: input.isPaid ?? false,
-        paymentMethod: input.isPaid ? (paymentMethod ?? 'CASH') : (paymentMethod ?? null),
+        paymentMethod: paymentMethod ?? (input.isPaid ? 'CASH' : null),
       })
       .returning();
 
@@ -210,7 +210,11 @@ export class BillingService {
     }
 
     const [invoice] = await this.db
-      .select({ id: schema.invoices.id, isPaid: schema.invoices.isPaid })
+      .select({
+        id: schema.invoices.id,
+        isPaid: schema.invoices.isPaid,
+        paymentMethod: schema.invoices.paymentMethod,
+      })
       .from(schema.invoices)
       .where(eq(schema.invoices.id, invoiceId));
 
@@ -223,7 +227,7 @@ export class BillingService {
 
     const [record] = await this.db
       .update(schema.invoices)
-      .set({ isPaid: true, paymentMethod: paymentMethod ?? 'CASH' })
+      .set({ isPaid: true, paymentMethod: paymentMethod ?? invoice.paymentMethod ?? 'CASH' })
       .where(eq(schema.invoices.id, invoiceId))
       .returning();
 

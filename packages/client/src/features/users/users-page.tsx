@@ -204,7 +204,11 @@ export function UsersPage() {
             onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
             options={ROLES}
             required
+            disabled={editing !== null && currentUser?.id === editing.id}
           />
+          {editing !== null && currentUser?.id === editing.id ? (
+            <p className="text-xs text-slate-500">You cannot change your own role.</p>
+          ) : null}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
               Cancel
